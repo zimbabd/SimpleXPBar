@@ -1,6 +1,6 @@
 ## Interface: 30300
 ## Title: SimpleXPBar
-## Notes: Легкая полоса опыта со статистикой XP/час за сессию
+## Notes: A lightweight experience bar with session XP/hour statistics
 ## Author: zimbabd
 ## Version: 1.0
 ## SavedVariables: SimpleXPBarDB

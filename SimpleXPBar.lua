@@ -4,9 +4,24 @@
 -- ============================================================================
 
 local SimpleXPBar = LibStub("AceAddon-3.0"):NewAddon("SimpleXPBar", "AceConsole-3.0", "AceEvent-3.0")
+local LDB = LibStub("LibDataBroker-1.1")
+local LibDBIcon = LibStub("LibDBIcon-1.0")
+local ICON_PATH = "Interface\\AddOns\\SimpleXPBar\\SXPB"
+
+local minimapButton = LDB:NewDataObject("SimpleXPBar", {
+    type = "launcher",
+    icon = ICON_PATH,
+    OnClick = function()
+        SimpleXPBar:HandleCommand("toggle")
+    end,
+    OnTooltipShow = function(tooltip)
+        tooltip:AddLine("SimpleXPBar")
+        tooltip:AddLine("Click to show or hide the XP bar", 1, 1, 1)
+    end,
+})
 
 -- ----------------------------------------------------------------------------
--- Переменные и настройки
+-- Variables and settings
 -- ----------------------------------------------------------------------------
 SimpleXPBar.session = {
     startTime = 0,
@@ -15,12 +30,12 @@ SimpleXPBar.session = {
     maxXP = 0,
 }
 
-local NUM_SEGMENTS = 20            -- Количество сегментов Blizzard (по 5%)
-local BAR_WIDTH = 600              -- Ширина полосы
-local BAR_HEIGHT = 24              -- Высота полосы
+local NUM_SEGMENTS = 20            -- Blizzard segments (5% each)
+local BAR_WIDTH = 600              -- Bar width
+local BAR_HEIGHT = 24              -- Bar height
 
 -- ----------------------------------------------------------------------------
--- Утилиты форматирования
+-- Formatting utilities
 -- ----------------------------------------------------------------------------
 local function FormatXP(xp)
     if not xp or xp < 0 then return "0" end
@@ -54,7 +69,7 @@ function SimpleXPBar:GetSessionXPHour()
 end
 
 -- ----------------------------------------------------------------------------
--- Логика событий XP
+-- XP event handling
 -- ----------------------------------------------------------------------------
 function SimpleXPBar:OnXPUpdate()
     local currentXP = _G.UnitXP("player") or 0
@@ -83,14 +98,14 @@ function SimpleXPBar:OnXPUpdate()
 end
 
 -- ----------------------------------------------------------------------------
--- Создание UI
+-- UI creation
 -- ----------------------------------------------------------------------------
 function SimpleXPBar:CreateUI()
     if self.frame then return end
 
     local backdropTemplate = _G.BackdropTemplateMixin and "BackdropTemplate" or nil
 
-    -- 1. Главный контейнер
+    -- 1. Main container
     self.frame = CreateFrame("Frame", "SimpleXPBarFrame", UIParent, backdropTemplate)
     self.frame:SetSize(BAR_WIDTH, BAR_HEIGHT)
     self.frame:SetPoint("TOP", UIParent, "TOP", 0, -30)
@@ -105,7 +120,7 @@ function SimpleXPBar:CreateUI()
         f:StopMovingOrSizing()
     end)
 
-    -- Фон и обводка (3.3.5 / Retail)
+    -- Background and border (3.3.5 / Retail)
     if self.frame.SetBackdrop then
         self.frame:SetBackdrop({
             bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -116,14 +131,14 @@ function SimpleXPBar:CreateUI()
         self.frame:SetBackdropColor(0, 0, 0, 0.7)
     end
 
-    -- 2. StatusBar (Полоса прогресса)
+    -- 2. StatusBar (progress bar)
     self.progressBar = CreateFrame("StatusBar", nil, self.frame)
     self.progressBar:SetPoint("TOPLEFT", self.frame, "TOPLEFT", 3, -3)
     self.progressBar:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -3, 3)
     self.progressBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     self.progressBar:SetStatusBarColor(0.58, 0.0, 0.83)
 
-    -- 3. Сегменты (20 делений)
+    -- 3. Segments (20 dividers)
     self.segments = {}
     local totalWidth = BAR_WIDTH - 6
     local segmentWidth = totalWidth / NUM_SEGMENTS
@@ -136,7 +151,7 @@ function SimpleXPBar:CreateUI()
         self.segments[i] = div
     end
 
-    -- 4. Текст
+    -- 4. Text
     self.text = self.progressBar:CreateFontString(nil, "OVERLAY")
     self.text:SetFont("Fonts\\ARIALN.TTF", 12, "OUTLINE")
     self.text:SetPoint("CENTER", self.progressBar, "CENTER", 0, 0)
@@ -144,7 +159,7 @@ function SimpleXPBar:CreateUI()
 end
 
 -- ----------------------------------------------------------------------------
--- Обновление UI
+-- UI updates
 -- ----------------------------------------------------------------------------
 function SimpleXPBar:Update()
     if not self.frame or not self.frame:IsShown() then return end
@@ -177,7 +192,7 @@ function SimpleXPBar:Update()
     local pct = (currentXP / maxXP) * 100
 
     self.text:SetText(string.format(
-        "%s / %s (%.1f%%) | %s XP/h | Время до апа: %s",
+        "%s / %s (%.1f%%) | %s XP/h | Time to level: %s",
         FormatXP(currentXP),
         FormatXP(maxXP),
         pct,
@@ -187,7 +202,7 @@ function SimpleXPBar:Update()
 end
 
 -- ----------------------------------------------------------------------------
--- Обработка Слэш-команд (/sxp)
+-- Slash command handling (/sxp)
 -- ----------------------------------------------------------------------------
 function SimpleXPBar:HandleCommand(input)
     local arg = string.lower(string.trim(input or ""))
@@ -196,69 +211,74 @@ function SimpleXPBar:HandleCommand(input)
         SimpleXPBarDB.isLocked = not SimpleXPBarDB.isLocked
         self.frame:EnableMouse(not SimpleXPBarDB.isLocked)
         if SimpleXPBarDB.isLocked then
-            self:Print("SimpleXPBar: |cff00ff00Заблокирован|r (закреплен).")
+            self:Print("SimpleXPBar: |cff00ff00Locked|r (bar is fixed in place).")
         else
-            self:Print("SimpleXPBar: |cffff0000Разблокирован|r (можно перетаскивать).")
+            self:Print("SimpleXPBar: |cffff0000Unlocked|r (bar can be dragged).")
         end
 
     elseif arg == "show" then
         SimpleXPBarDB.hidden = false
         self.frame:Show()
         self:Update()
-        self:Print("SimpleXPBar: Полоса показана.")
+        self:Print("SimpleXPBar: Bar shown.")
 
     elseif arg == "hide" then
         SimpleXPBarDB.hidden = true
         self.frame:Hide()
-        self:Print("SimpleXPBar: Полоса скрыта.")
+        self:Print("SimpleXPBar: Bar hidden.")
 
     elseif arg == "toggle" then
         SimpleXPBarDB.hidden = not SimpleXPBarDB.hidden
         if SimpleXPBarDB.hidden then
             self.frame:Hide()
-            self:Print("SimpleXPBar: Полоса скрыта.")
+            self:Print("SimpleXPBar: Bar hidden.")
         else
             self.frame:Show()
             self:Update()
-            self:Print("SimpleXPBar: Полоса показана.")
+            self:Print("SimpleXPBar: Bar shown.")
         end
 
     elseif arg == "reset" then
         self.frame:ClearAllPoints()
         self.frame:SetPoint("TOP", UIParent, "TOP", 0, -30)
-        self:Print("SimpleXPBar: Позиция сброшена по центру.")
+        self:Print("SimpleXPBar: Position reset to the top center.")
 
     else
-        self:Print("Команды аддона (/sxp или /simplexp):")
-        print("  |cff00ffff/sxp lock|r - Закрепить / Открепить полосу")
-        print("  |cff00ffff/sxp show|r - Показать полосу XP")
-        print("  |cff00ffff/sxp hide|r - Скрыть полосу XP")
-        print("  |cff00ffff/sxp toggle|r - Показать / Скрыть")
-        print("  |cff00ffff/sxp reset|r - Сбросить положение фрейма")
+        self:Print("SimpleXPBar commands (/sxp or /simplexp):")
+        print("  |cff00ffff/sxp lock|r - Lock or unlock the bar")
+        print("  |cff00ffff/sxp show|r - Show the XP bar")
+        print("  |cff00ffff/sxp hide|r - Hide the XP bar")
+        print("  |cff00ffff/sxp toggle|r - Toggle bar visibility")
+        print("  |cff00ffff/sxp reset|r - Reset the bar position")
     end
 end
 
 -- ----------------------------------------------------------------------------
--- Инициализация и Запуск
+-- Initialization and startup
 -- ----------------------------------------------------------------------------
 function SimpleXPBar:CreateTimer()
-    if self.UpdateTimer and not self.UpdateTimer:IsCancelled() then
-        self.UpdateTimer:Cancel()
-    end
-    self.UpdateTimer = _G.C_Timer.NewTicker(1.0, function()
-        SimpleXPBar:Update()
+    self.timerElapsed = 0
+    self.frame:SetScript("OnUpdate", function(_, elapsed)
+        self.timerElapsed = self.timerElapsed + elapsed
+        if self.timerElapsed >= 1 then
+            self.timerElapsed = 0
+            self:Update()
+        end
     end)
 end
 
 function SimpleXPBar:OnInitialize()
-    -- Инициализация базы сохраненных настроек
+    -- Initialize saved settings
     _G.SimpleXPBarDB = _G.SimpleXPBarDB or {}
     if _G.SimpleXPBarDB.isLocked == nil then _G.SimpleXPBarDB.isLocked = false end
     if _G.SimpleXPBarDB.hidden == nil then _G.SimpleXPBarDB.hidden = false end
+    _G.SimpleXPBarDB.minimap = _G.SimpleXPBarDB.minimap or {}
+
+    LibDBIcon:Register("SimpleXPBar", minimapButton, _G.SimpleXPBarDB.minimap)
 
     self:CreateUI()
 
-    -- Применяем сохраненное состояние мыши и видимости
+    -- Apply saved mouse and visibility states
     self.frame:EnableMouse(not _G.SimpleXPBarDB.isLocked)
     if _G.SimpleXPBarDB.hidden then
         self.frame:Hide()
@@ -266,7 +286,7 @@ function SimpleXPBar:OnInitialize()
         self.frame:Show()
     end
 
-    -- Регистрация новых слэш-команд /sxp
+    -- Register slash commands /sxp and /simplexp
     self:RegisterChatCommand("sxp", "HandleCommand")
     self:RegisterChatCommand("simplexp", "HandleCommand")
 
