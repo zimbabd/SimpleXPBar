@@ -19,7 +19,7 @@ The interface features a classic Blizzard-style layout with 20 distinct visual s
 
 ## 🖥️ Layout Preview
 
-[==================== 45.2k / 100.0k (45.2%) | 12.5k XP/h | Time to Level: 4h 23m ====================]
+<img width="989" height="63" alt="WoWScrnShot_092226_232631 — копия" src="https://github.com/user-attachments/assets/a584786f-2365-42f6-9b19-cd10025316a7" />
 
 
 ---
