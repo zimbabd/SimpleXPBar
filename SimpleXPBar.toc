@@ -2,7 +2,7 @@
 ## Title: SimpleXPBar
 ## Notes: A lightweight experience bar with session XP/hour statistics
 ## Author: zimbabd
-## Version: 1.0
+## Version: 1.1
 ## SavedVariables: SimpleXPBarDB
 
 embeds.xml
