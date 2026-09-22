@@ -1,0 +1,9 @@
+## Interface: 30300
+## Title: SimpleXPBar
+## Notes: Легкая полоса опыта со статистикой XP/час за сессию
+## Author: zimbabd
+## Version: 1.0
+## SavedVariables: SimpleXPBarDB
+
+embeds.xml
+SimpleXPBar.lua
