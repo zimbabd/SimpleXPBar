@@ -41,13 +41,13 @@ Commands are available through `/sxp` and `/simplexp`.
 
 Scale values are clamped to the `0.5`-`1.5` range. The default scale is `1.0`.
 
-## Minimap Controls
+## 🗺️ Minimap Controls
 
 - Left click the `SXPB.tga` icon to show or hide the XP bar.
 - Right click the icon to open the command menu.
 - Open `Size` in the menu to reset to `100%` or increase/decrease the panel by `0.1`.
 
-## Saved Settings
+## 💾 Saved Settings
 
 The addon uses two WoW SavedVariables tables:
 
@@ -62,7 +62,7 @@ This allows the layout to remain consistent across characters while each charact
 2. Make sure the folder contains `SimpleXPBar.toc`, `SimpleXPBar.lua`, `embeds.xml`, the `lib` folder, and `SXPB.tga`.
 3. Enable the addon and use `/reload` after installation or updates.
 
-## Compatibility
+## 🔄 Compatibility
 
 - World of Warcraft 3.3.5a / Wrath of the Lich King.
 - Interface version: `30300`.
