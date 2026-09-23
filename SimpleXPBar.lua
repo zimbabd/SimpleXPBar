@@ -11,12 +11,17 @@ local ICON_PATH = "Interface\\AddOns\\SimpleXPBar\\SXPB"
 local minimapButton = LDB:NewDataObject("SimpleXPBar", {
     type = "launcher",
     icon = ICON_PATH,
-    OnClick = function()
+    OnClick = function(self, button)
+        if button == "RightButton" then
+            ToggleDropDownMenu(1, nil, SimpleXPBarMinimapDropDown, "cursor", 0, 0)
+            return
+        end
         SimpleXPBar:HandleCommand("toggle")
     end,
     OnTooltipShow = function(tooltip)
         tooltip:AddLine("SimpleXPBar")
-        tooltip:AddLine("Click to show or hide the XP bar", 1, 1, 1)
+        tooltip:AddLine("Left click: toggle XP bar", 1, 1, 1)
+        tooltip:AddLine("Right click: commands", 1, 1, 1)
     end,
 })
 
@@ -33,6 +38,12 @@ SimpleXPBar.session = {
 local NUM_SEGMENTS = 20            -- Blizzard segments (5% each)
 local BAR_WIDTH = 600              -- Bar width
 local BAR_HEIGHT = 24              -- Bar height
+local DEFAULT_TEXT_SIZE = 12
+local MIN_BAR_SCALE = 0.5
+local MAX_BAR_SCALE = 1.5
+local MIN_TEXT_SCALE = 0.5
+local MAX_TEXT_SCALE = 1.5
+local SCALE_STEP = 0.1
 
 -- ----------------------------------------------------------------------------
 -- Formatting utilities
@@ -69,6 +80,52 @@ function SimpleXPBar:GetSessionXPHour()
 end
 
 -- ----------------------------------------------------------------------------
+-- Minimap menu
+-- ----------------------------------------------------------------------------
+function SimpleXPBar:InitMinimapMenu()
+    if self.minimapMenu then return end
+
+    local dropdown = CreateFrame("Frame", "SimpleXPBarMinimapDropDown", UIParent, "UIDropDownMenuTemplate")
+    self.minimapMenu = dropdown
+
+    local function PopulateMenu(_, level)
+        local info = {}
+
+        if level == 2 then
+            info = { text = "Default (100%)", func = function() SimpleXPBar:HandleCommand("scale 1.0") end }
+            UIDropDownMenu_AddButton(info, level)
+
+            info = { text = "Increase (+0.1)", func = function() SimpleXPBar:HandleCommand("scale +0.1") end }
+            UIDropDownMenu_AddButton(info, level)
+
+            info = { text = "Decrease (-0.1)", func = function() SimpleXPBar:HandleCommand("scale -0.1") end }
+            UIDropDownMenu_AddButton(info, level)
+            return
+        end
+
+        info = { text = "Toggle bar", func = function() SimpleXPBar:HandleCommand("toggle") end }
+        UIDropDownMenu_AddButton(info, level)
+
+        info = { text = "Show bar", func = function() SimpleXPBar:HandleCommand("show") end }
+        UIDropDownMenu_AddButton(info, level)
+
+        info = { text = "Hide bar", func = function() SimpleXPBar:HandleCommand("hide") end }
+        UIDropDownMenu_AddButton(info, level)
+
+        info = { text = "Lock / unlock", func = function() SimpleXPBar:HandleCommand("lock") end }
+        UIDropDownMenu_AddButton(info, level)
+
+        info = { text = "Reset position", func = function() SimpleXPBar:HandleCommand("reset") end }
+        UIDropDownMenu_AddButton(info, level)
+
+        info = { text = "Size", hasArrow = 1, value = "size" }
+        UIDropDownMenu_AddButton(info, level)
+    end
+
+    dropdown.initialize = PopulateMenu
+end
+
+-- ----------------------------------------------------------------------------
 -- XP event handling
 -- ----------------------------------------------------------------------------
 function SimpleXPBar:OnXPUpdate()
@@ -100,6 +157,26 @@ end
 -- ----------------------------------------------------------------------------
 -- UI creation
 -- ----------------------------------------------------------------------------
+function SimpleXPBar:ApplyScale()
+    if not self.frame then return end
+
+    local barScale = tonumber(_G.SimpleXPBarCharDB.barScale) or 1
+    local textScale = tonumber(_G.SimpleXPBarCharDB.textScale) or 1
+
+    if barScale < MIN_BAR_SCALE then barScale = MIN_BAR_SCALE end
+    if barScale > MAX_BAR_SCALE then barScale = MAX_BAR_SCALE end
+    if textScale < MIN_TEXT_SCALE then textScale = MIN_TEXT_SCALE end
+    if textScale > MAX_TEXT_SCALE then textScale = MAX_TEXT_SCALE end
+
+    _G.SimpleXPBarCharDB.barScale = barScale
+    _G.SimpleXPBarCharDB.textScale = textScale
+
+    self.frame:SetScale(barScale)
+    if self.text then
+        self.text:SetFont("Fonts\\ARIALN.TTF", DEFAULT_TEXT_SIZE * textScale, "OUTLINE")
+    end
+end
+
 function SimpleXPBar:CreateUI()
     if self.frame then return end
 
@@ -108,7 +185,17 @@ function SimpleXPBar:CreateUI()
     -- 1. Main container
     self.frame = CreateFrame("Frame", "SimpleXPBarFrame", UIParent, backdropTemplate)
     self.frame:SetSize(BAR_WIDTH, BAR_HEIGHT)
-    self.frame:SetPoint("TOP", UIParent, "TOP", 0, -30)
+    if SimpleXPBarDB.position then
+        self.frame:SetPoint(
+            SimpleXPBarDB.position.point,
+            UIParent,
+            SimpleXPBarDB.position.relativePoint,
+            SimpleXPBarDB.position.x,
+            SimpleXPBarDB.position.y
+        )
+    else
+        self.frame:SetPoint("TOP", UIParent, "TOP", 0, -30)
+    end
     self.frame:SetMovable(true)
     self.frame:EnableMouse(true)
     self.frame:RegisterForDrag("LeftButton")
@@ -118,6 +205,13 @@ function SimpleXPBar:CreateUI()
     end)
     self.frame:SetScript("OnDragStop", function(f)
         f:StopMovingOrSizing()
+        local point, _, relativePoint, x, y = f:GetPoint()
+        SimpleXPBarDB.position = {
+            point = point,
+            relativePoint = relativePoint,
+            x = x,
+            y = y,
+        }
     end)
 
     -- Background and border (3.3.5 / Retail)
@@ -153,9 +247,11 @@ function SimpleXPBar:CreateUI()
 
     -- 4. Text
     self.text = self.progressBar:CreateFontString(nil, "OVERLAY")
-    self.text:SetFont("Fonts\\ARIALN.TTF", 12, "OUTLINE")
+    self.text:SetFont("Fonts\\ARIALN.TTF", DEFAULT_TEXT_SIZE, "OUTLINE")
     self.text:SetPoint("CENTER", self.progressBar, "CENTER", 0, 0)
     self.text:SetTextColor(1, 1, 1, 1)
+
+    self:ApplyScale()
 end
 
 -- ----------------------------------------------------------------------------
@@ -205,7 +301,10 @@ end
 -- Slash command handling (/sxp)
 -- ----------------------------------------------------------------------------
 function SimpleXPBar:HandleCommand(input)
-    local arg = string.lower(string.trim(input or ""))
+    local raw = input or ""
+    local command, valueText = string.match(raw, "^%s*(%S+)%s*(.-)%s*$")
+    local arg = string.lower(command or "")
+    local value = tonumber(valueText)
 
     if arg == "lock" then
         SimpleXPBarDB.isLocked = not SimpleXPBarDB.isLocked
@@ -217,19 +316,19 @@ function SimpleXPBar:HandleCommand(input)
         end
 
     elseif arg == "show" then
-        SimpleXPBarDB.hidden = false
+        SimpleXPBarCharDB.hidden = false
         self.frame:Show()
         self:Update()
         self:Print("SimpleXPBar: Bar shown.")
 
     elseif arg == "hide" then
-        SimpleXPBarDB.hidden = true
+        SimpleXPBarCharDB.hidden = true
         self.frame:Hide()
         self:Print("SimpleXPBar: Bar hidden.")
 
     elseif arg == "toggle" then
-        SimpleXPBarDB.hidden = not SimpleXPBarDB.hidden
-        if SimpleXPBarDB.hidden then
+        SimpleXPBarCharDB.hidden = not SimpleXPBarCharDB.hidden
+        if SimpleXPBarCharDB.hidden then
             self.frame:Hide()
             self:Print("SimpleXPBar: Bar hidden.")
         else
@@ -241,7 +340,71 @@ function SimpleXPBar:HandleCommand(input)
     elseif arg == "reset" then
         self.frame:ClearAllPoints()
         self.frame:SetPoint("TOP", UIParent, "TOP", 0, -30)
+        SimpleXPBarDB.position = {
+            point = "TOP",
+            relativePoint = "TOP",
+            x = 0,
+            y = -30,
+        }
         self:Print("SimpleXPBar: Position reset to the top center.")
+
+    elseif arg == "scale" then
+        if not valueText or valueText == "" then
+            self:Print("SimpleXPBar: Usage: /sxp scale <value> (0.5 to 1.5) or +0.1 / -0.1")
+            return
+        end
+
+        local currentScale = tonumber(SimpleXPBarCharDB.barScale) or 1
+        local relativeMatch = valueText:match("^([+-]%d+%.?%d*)$")
+        local absoluteMatch = valueText:match("^(%d+%.?%d*)$")
+        local nextValue
+
+        if relativeMatch then
+            local delta = tonumber(relativeMatch)
+            nextValue = currentScale + delta
+        elseif absoluteMatch then
+            nextValue = tonumber(absoluteMatch)
+        else
+            self:Print("SimpleXPBar: Invalid scale value. Examples: 1.0, +0.1, -0.1")
+            return
+        end
+
+        nextValue = math.max(MIN_BAR_SCALE, math.min(MAX_BAR_SCALE, nextValue))
+        nextValue = math.floor((nextValue / SCALE_STEP) + 0.5) * SCALE_STEP
+        nextValue = math.max(MIN_BAR_SCALE, math.min(MAX_BAR_SCALE, nextValue))
+
+        SimpleXPBarCharDB.barScale = nextValue
+        self:ApplyScale()
+        self:Print(string.format("SimpleXPBar: Bar scale set to %.2f.", SimpleXPBarCharDB.barScale))
+
+    elseif arg == "textscale" then
+        if not valueText or valueText == "" then
+            self:Print("SimpleXPBar: Usage: /sxp textscale <value> (0.5 to 1.5) or +0.1 / -0.1")
+            return
+        end
+
+        local currentScale = tonumber(SimpleXPBarCharDB.textScale) or 1
+        local relativeMatch = valueText:match("^([+-]%d+%.?%d*)$")
+        local absoluteMatch = valueText:match("^(%d+%.?%d*)$")
+        local nextValue
+
+        if relativeMatch then
+            local delta = tonumber(relativeMatch)
+            nextValue = currentScale + delta
+        elseif absoluteMatch then
+            nextValue = tonumber(absoluteMatch)
+        else
+            self:Print("SimpleXPBar: Invalid text scale value. Examples: 1.0, +0.1, -0.1")
+            return
+        end
+
+        nextValue = math.max(MIN_TEXT_SCALE, math.min(MAX_TEXT_SCALE, nextValue))
+        nextValue = math.floor((nextValue / SCALE_STEP) + 0.5) * SCALE_STEP
+        nextValue = math.max(MIN_TEXT_SCALE, math.min(MAX_TEXT_SCALE, nextValue))
+
+        SimpleXPBarCharDB.textScale = nextValue
+        self:ApplyScale()
+        self:Print(string.format("SimpleXPBar: Text scale set to %.2f.", SimpleXPBarCharDB.textScale))
 
     else
         self:Print("SimpleXPBar commands (/sxp or /simplexp):")
@@ -250,6 +413,8 @@ function SimpleXPBar:HandleCommand(input)
         print("  |cff00ffff/sxp hide|r - Hide the XP bar")
         print("  |cff00ffff/sxp toggle|r - Toggle bar visibility")
         print("  |cff00ffff/sxp reset|r - Reset the bar position")
+        print("  |cff00ffff/sxp scale <value>|r - Set panel scale (0.5-1.5, step 0.1)")
+        print("  |cff00ffff/sxp textscale <value>|r - Set text scale (0.5-1.5, step 0.1)")
     end
 end
 
@@ -270,17 +435,27 @@ end
 function SimpleXPBar:OnInitialize()
     -- Initialize saved settings
     _G.SimpleXPBarDB = _G.SimpleXPBarDB or {}
+    _G.SimpleXPBarCharDB = _G.SimpleXPBarCharDB or {}
     if _G.SimpleXPBarDB.isLocked == nil then _G.SimpleXPBarDB.isLocked = false end
-    if _G.SimpleXPBarDB.hidden == nil then _G.SimpleXPBarDB.hidden = false end
+    if _G.SimpleXPBarCharDB.barScale == nil then
+        _G.SimpleXPBarCharDB.barScale = _G.SimpleXPBarDB.barScale or 1
+    end
+    if _G.SimpleXPBarCharDB.textScale == nil then
+        _G.SimpleXPBarCharDB.textScale = _G.SimpleXPBarDB.textScale or 1
+    end
+    if _G.SimpleXPBarCharDB.hidden == nil then
+        _G.SimpleXPBarCharDB.hidden = _G.SimpleXPBarDB.hidden or false
+    end
     _G.SimpleXPBarDB.minimap = _G.SimpleXPBarDB.minimap or {}
 
     LibDBIcon:Register("SimpleXPBar", minimapButton, _G.SimpleXPBarDB.minimap)
 
+    self:InitMinimapMenu()
     self:CreateUI()
 
     -- Apply saved mouse and visibility states
     self.frame:EnableMouse(not _G.SimpleXPBarDB.isLocked)
-    if _G.SimpleXPBarDB.hidden then
+    if _G.SimpleXPBarCharDB.hidden then
         self.frame:Hide()
     else
         self.frame:Show()

@@ -4,6 +4,7 @@
 ## Author: zimbabd
 ## Version: 1.1
 ## SavedVariables: SimpleXPBarDB
+## SavedVariablesPerCharacter: SimpleXPBarCharDB
 
 embeds.xml
 SimpleXPBar.lua

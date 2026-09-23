@@ -1,42 +1,37 @@
 # Changelog
 
-## v4.0
+## v1.1 - Current
 
-### Fixes
-- Fixed `IsInInstance()` not filtering instance type: only `party` and `raid` instances now trigger tracking (BGs, arenas, and outdoor zones are ignored).
-- Replaced non-existent `CHAT_MSG_COMBAT_XP_GAIN` event with `COMBAT_LOG_EVENT_UNFILTERED` + `UNIT_DIED` subtype. Mob kill counter now actually works on 3.3.5 clients.
-- Fixed `GetInstanceInfo()` returning an empty string right after the loading screen. Added retry logic via `OnUpdate` (up to 3 seconds) before falling back to "Unknown Dungeon".
-- Fixed XP tracking breaking on levelup: `PLAYER_XP_UPDATE` now correctly accounts for the XP earned to cross a level boundary using `UnitXPMax`.
-- Added persistent active run state (`NovaDungeonXPDB.activeRun`). Progress is no longer lost on `/reload` while inside a dungeon.
+### Added
 
-### Improvements
-- Duration is now stored as raw seconds (`duration` field) and displayed as `Xm Ys`. Old history entries using the float `time` field are still displayed correctly.
-- Added `PLAYER_LOGIN` event to restore an active run after `/reload`.
-- Fixed sort header "Time" using stale key `"time"`; updated to `"duration"`.
-- `deleteBtn` is now properly hidden for empty rows and shown only for populated ones.
-- Fixed `bestXPH == 0` edge case where all rows were incorrectly highlighted green.
-- Fixed delete button closure capturing loop variable instead of the actual entry.
-- Removed all references to Ascension WoW. Addon targets Warmane and standard WotLK 3.3.5 clients.
+- Added `SXPB.tga` minimap icon through `LibDataBroker-1.1` and `LibDBIcon-1.0`.
+- Added left-click minimap toggle.
+- Added right-click minimap command menu.
+- Added nested `Size` menu with `Default (100%)`, `Increase (+0.1)`, and `Decrease (-0.1)`.
+- Added panel scale command: `/sxp scale <value>`.
+- Added text scale command: `/sxp textscale <value>`.
+- Added per-character visibility, panel scale, and text scale settings.
+- Added account-wide panel position persistence.
 
+### Changed
 
-## v3.2
+- Scale values are limited to `0.5`-`1.5` and rounded to `0.1` steps.
+- Unsigned scale values set an exact size, for example `/sxp scale 1.0`.
+- Signed scale values adjust the current size, for example `/sxp scale +0.1`.
+- Replaced `C_Timer.NewTicker` with a 3.3.5-compatible `OnUpdate` timer.
+- Translated addon-facing messages and command help to English.
 
-### New
-- Added row hover highlighting (semi-transparent gray background on mouse over).
-- Added individual "X" delete buttons per history row.
-- Added "Clear History" button with confirmation popup.
+### Fixed
 
-### Improvements
-- Fixed all function ordering and circular dependency issues.
+- Fixed addon startup on WoW 3.3.5 clients where `C_Timer.NewTicker` is unavailable.
+- Fixed scale settings being shared between characters.
 
+## v1.0
 
-## v3.1
+### Added
 
-### New
-- Increased run history limit from 10 to 100 entries.
-- Added a scrollable history list.
-- Added sorting by Time, XP Gained and XP/H.
-
-### Improvements
-- Improved history table usability.
+- Added the initial draggable Blizzard-style XP bar.
+- Added current XP, XP percentage, session XP/hour, and time-to-level display.
+- Added `/sxp` and `/simplexp` commands for locking, visibility, and position reset.
+- Added persistent account-wide layout settings.
 
