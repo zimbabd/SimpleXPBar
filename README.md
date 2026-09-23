@@ -2,7 +2,7 @@
 
 SimpleXPBar is a lightweight World of Warcraft 3.3.5a addon that displays current XP, XP percentage, session XP per hour, and an estimated time to level.
 
-## Features
+## 🌟 Features
 
 - Blizzard-style XP bar with 20 visual segments.
 - Session XP/hour tracking.
@@ -16,7 +16,12 @@ SimpleXPBar is a lightweight World of Warcraft 3.3.5a addon that displays curren
 - Character-specific visibility, panel scale, and text scale.
 - Saved settings restored after reload or login.
 
-## Slash Commands
+## 🖥️ Layout Preview
+
+[==================== 45.2k / 100.0k (45.2%) | 12.5k XP/h | Time to Level: 4h 23m ====================]
+<img width="989" height="63" alt="WoWScrnShot_092226_232631 — копия" src="https://github.com/user-attachments/assets/a584786f-2365-42f6-9b19-cd10025316a7" />
+
+## 🛠️ Slash Commands
 
 Commands are available through `/sxp` and `/simplexp`.
 
@@ -51,7 +56,7 @@ The addon uses two WoW SavedVariables tables:
 
 This allows the layout to remain consistent across characters while each character can independently show or hide the bar and use its own scale.
 
-## Installation
+## 📥 Installation
 
 1. Place the `SimpleXPBar` folder in `World of Warcraft\Interface\AddOns\`.
 2. Make sure the folder contains `SimpleXPBar.toc`, `SimpleXPBar.lua`, `embeds.xml`, the `lib` folder, and `SXPB.tga`.
@@ -62,6 +67,6 @@ This allows the layout to remain consistent across characters while each charact
 - World of Warcraft 3.3.5a / Wrath of the Lich King.
 - Interface version: `30300`.
 
-## Author
+## 👨‍💻 Author
 
 zimbabd
